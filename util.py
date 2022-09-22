@@ -3,10 +3,11 @@ import logging
 import subprocess
 import numpy as np
 import configparser
+import datetime
 from PIL import Image
 
 logging.basicConfig(
-    filename='logs/record.log',
+    filename='logs/util.log',
     format='[%(levelname)s] %(asctime)s %(message)s',
     level=logging.INFO
 )
@@ -24,12 +25,15 @@ def get_std(exposure):
     std = (np.std(np.sum(image, axis=2)))
     return std
 
-def auto_exposure(target_lower=150, target_upper=200, step_size=10):
+def auto_exposure(target_lower=150, target_upper=190, step_size=5):
     MAX_EXPOSURE = 50
     MIN_EXPOSURE = 3
     config = configparser.ConfigParser()
     config.read('auto_exposure.ini')
-    exposure = config.getint('DEFAULT', 'exposure')
+    current_hr = str(datetime.datetime.now().hour)
+    if not config.has_section(current_hr):
+        config[current_hr] = {'exposure': 25}
+    exposure = int(config.get(current_hr, 'exposure'))
     std = get_std(exposure)
     while std > target_upper:
         if exposure - step_size < MIN_EXPOSURE:
@@ -41,10 +45,11 @@ def auto_exposure(target_lower=150, target_upper=200, step_size=10):
             break
         exposure += step_size
         std = get_std(exposure)
-    config['DEFAULT']['exposure'] = str(exposure)
+    config[current_hr]['exposure'] = str(exposure)
     with open('auto_exposure.ini', 'w') as configfile:
         config.write(configfile)
+    logging.info(f'Set exposure to {exposure}, std = {std}')
     return exposure
 
 if __name__ == '__main__':
-    auto_exposure()
+    print(get_std(45))
