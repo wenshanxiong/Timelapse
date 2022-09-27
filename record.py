@@ -55,7 +55,7 @@ except subprocess.CalledProcessError as err:
         logging.error(err.stderr)
         sys.exit(1)
 
-if args.dry_run:
+if not args.dry_run:
     creds, _ = google.auth.default()
     try:
         # create drive api client

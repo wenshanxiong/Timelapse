@@ -25,8 +25,8 @@ def get_std(exposure):
     std = (np.std(np.sum(image, axis=2)))
     return std
 
-def auto_exposure(target_lower=150, target_upper=190, step_size=5):
-    MAX_EXPOSURE = 50
+def auto_exposure(target=195, step_size=5):
+    MAX_EXPOSURE = 2047
     MIN_EXPOSURE = 3
     config = configparser.ConfigParser()
     config.read('auto_exposure.ini')
@@ -34,21 +34,31 @@ def auto_exposure(target_lower=150, target_upper=190, step_size=5):
     if not config.has_section(current_hr):
         config[current_hr] = {'exposure': 25}
     exposure = int(config.get(current_hr, 'exposure'))
+
+    best = exposure
     std = get_std(exposure)
-    while std > target_upper:
-        if exposure - step_size < MIN_EXPOSURE:
-            break
-        exposure -= step_size
+    prev_error = float("inf")
+    curr_error = abs(target - std)
+    while curr_error > prev_error:
+        if std > target:
+            if exposure - step_size < MIN_EXPOSURE:
+                break
+            exposure -= step_size
+        else:
+            if exposure + step_size > MAX_EXPOSURE:
+                break
+            exposure += step_size
         std = get_std(exposure)
-    while std < target_lower:
-        if exposure + step_size > MAX_EXPOSURE:
+        prev_error = curr_error
+        curr_error = abs(target - std)
+        if curr_error > prev_error:
             break
-        exposure += step_size
-        std = get_std(exposure)
-    config[current_hr]['exposure'] = str(exposure)
+        best = exposure
+
+    config[current_hr]['exposure'] = str(best)
     with open('auto_exposure.ini', 'w') as configfile:
         config.write(configfile)
-    logging.info(f'Set exposure to {exposure}, std = {std}')
+    logging.info(f'Set exposure to {best}, std = {std}')
     return exposure
 
 if __name__ == '__main__':
