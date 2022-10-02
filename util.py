@@ -1,4 +1,3 @@
-from enum import auto
 import logging
 import subprocess
 import numpy as np
@@ -25,7 +24,7 @@ def get_std(exposure):
     std = (np.std(np.sum(image, axis=2)))
     return std
 
-def auto_exposure(target=195, step_size=5):
+def auto_exposure(target=195, step_size=10):
     MAX_EXPOSURE = 2047
     MIN_EXPOSURE = 3
     config = configparser.ConfigParser()
@@ -39,7 +38,8 @@ def auto_exposure(target=195, step_size=5):
     std = get_std(exposure)
     prev_error = float("inf")
     curr_error = abs(target - std)
-    while curr_error > prev_error:
+    while curr_error < prev_error:
+        best = exposure
         if std > target:
             if exposure - step_size < MIN_EXPOSURE:
                 break
@@ -51,15 +51,13 @@ def auto_exposure(target=195, step_size=5):
         std = get_std(exposure)
         prev_error = curr_error
         curr_error = abs(target - std)
-        if curr_error > prev_error:
-            break
-        best = exposure
+        print(f"std: {std}, target: {target}, diff: {curr_error}")
 
     config[current_hr]['exposure'] = str(best)
     with open('auto_exposure.ini', 'w') as configfile:
         config.write(configfile)
     logging.info(f'Set exposure to {best}, std = {std}')
-    return exposure
+    return best
 
 if __name__ == '__main__':
     print(get_std(45))
